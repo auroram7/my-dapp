@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>My DApp Dashboard</title>
+  <title>My Web3 Playground</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 2rem; }
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 2rem; }
     h2 { margin-top: 2rem; }
     button { margin: 0.25rem 0; padding: 0.5rem 1rem; }
+    input { padding: 0.3rem; margin: 0.2rem; }
     #logs { background: #f4f4f4; padding: 1rem; margin-top: 2rem; height: 200px; overflow-y: auto; }
     .section { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
   </style>
@@ -36,7 +37,6 @@
     <h2>Voting</h2>
     <button id="voteYesBtn">Vote YES (proposal 1)</button>
     <button id="voteNoBtn">Vote NO (proposal 1)</button>
-    <p>Check console/logs for results</p>
   </div>
 
   <!-- Badge Score -->
@@ -48,140 +48,220 @@
     <p>My Badges: <span id="myBadges">0</span></p>
   </div>
 
+  <!-- Counter -->
+  <div class="section">
+    <h2>Counter</h2>
+    <button id="incCounterBtn">Increment</button>
+    <button id="decCounterBtn">Decrement</button>
+    <p>Value: <span id="counterVal">0</span></p>
+  </div>
+
+  <!-- Todo List -->
+  <div class="section">
+    <h2>Todo List</h2>
+    <input id="todoText" placeholder="New Task" />
+    <button id="addTodoBtn">Add Task</button>
+    <input id="toggleIndex" type="number" placeholder="Index #" />
+    <button id="toggleTodoBtn">Toggle Done</button>
+    <pre id="todoList"></pre>
+  </div>
+
+  <!-- Token Faucet -->
+  <div class="section">
+    <h2>Token Faucet</h2>
+    <button id="claimBtn">Claim Free Tokens</button>
+    <p>My Balance: <span id="faucetBal">0</span></p>
+  </div>
+
+  <!-- Donation Box -->
+  <div class="section">
+    <h2>Donation Box</h2>
+    <input id="donAmount" type="number" placeholder="Amount in ETH" />
+    <button id="donateBtn">Donate</button>
+    <p>Total Donated: <span id="donTotal">0</span> ETH</p>
+    <p>Your Donations: <span id="myDon">0</span> ETH</p>
+  </div>
+
   <!-- Logs -->
   <h2>Logs</h2>
   <div id="logs"></div>
 
 <script>
 (async function(){
-  // --- Config: contract addresses ---
-  const guestbookAddress = "0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E";
-  const simpleVotingAddress = "0x593393079914635026344565312224f8c8282e4F";
-  const badgeScoreAddress = "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75";
+  // --- Addresses ---
+  const guestbookAddress   = "0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E";
+  const votingAddress      = "0x593393079914635026344565312224f8c8282e4F";
+  const badgeAddress       = "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75";
+  const counterAddress     = "0xf13C948A5ce9e4f4E3c8c2Ad2aF840b0EaE98601";
+  const todoAddress        = "0x079cBF49037898d94eA730e39B998762089Db223";
+  const faucetAddress      = "0x4e45e75209c61508540AB70886F9d0406C3e1211";
+  const donationAddress    = "0x7389AD9e829FAA7eA1b90F05b7DcFeb04913925c";
 
   // --- ABIs ---
   const guestbookAbi = [
     "function sign(string message) external",
     "function totalEntries() view returns (uint256)"
   ];
-  const simpleVotingAbi = [
-    "function vote(uint256,bool) external"
-  ];
-  const badgeScoreAbi = [
+  const votingAbi = [ "function vote(uint256,bool) external" ];
+  const badgeAbi = [
     "function scoreOf(uint256) view returns (uint256)",
     "function increaseScore(uint256,uint256) external",
     "function balanceOf(address) view returns (uint256)"
   ];
+  const counterAbi = [
+    "function count() view returns (uint256)",
+    "function inc() external",
+    "function dec() external"
+  ];
+  const todoAbi = [
+    "function addTask(string text) external",
+    "function toggleTask(uint256 i) external",
+    "function getTasks() view returns (tuple(string text,bool done)[])"
+  ];
+  const faucetAbi = [
+    "function claim() external",
+    "function balanceOf(address) view returns (uint256)"
+  ];
+  const donationAbi = [
+    "function donate() payable external",
+    "function total() view returns (uint256)",
+    "function myDonation() view returns (uint256)"
+  ];
 
   // --- State ---
   let provider, signer, account;
-  let guestbookContract, votingContract, badgeContract;
+  let guestbook, voting, badge, counter, todo, faucet, donation;
 
   // --- Helpers ---
-  function log(msg) {
-    const el = document.getElementById('logs');
-    const now = new Date().toLocaleTimeString();
-    el.innerHTML = `<div>[${now}] ${msg}</div>` + el.innerHTML;
-  }
-  function setText(id, txt) { document.getElementById(id).innerText = txt; }
+  const log = m => {
+    const el = document.getElementById("logs");
+    el.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${m}</div>` + el.innerHTML;
+  };
+  const setText = (id, t) => document.getElementById(id).innerText = t;
 
   // --- Connect Wallet ---
-  document.getElementById('connectBtn').onclick = async () => {
-    if (!window.ethereum) return alert('Install MetaMask or another wallet.');
-    try {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []); // only once
-      signer = await provider.getSigner();
-      account = await signer.getAddress();
-      setText('acct', account);
-      log("Connected: " + account);
+  document.getElementById("connectBtn").onclick = async () => {
+    if (!window.ethereum) return alert("Install MetaMask!");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    setText("acct", account);
+    log("Connected: " + account);
 
-      // chain info
-      const network = await provider.getNetwork();
-      setText('chainInfo', `Network: ${network.name} (chainId ${network.chainId})`);
+    // instantiate contracts
+    guestbook = new ethers.Contract(guestbookAddress, guestbookAbi, signer);
+    voting   = new ethers.Contract(votingAddress, votingAbi, signer);
+    badge    = new ethers.Contract(badgeAddress, badgeAbi, signer);
+    counter  = new ethers.Contract(counterAddress, counterAbi, signer);
+    todo     = new ethers.Contract(todoAddress, todoAbi, signer);
+    faucet   = new ethers.Contract(faucetAddress, faucetAbi, signer);
+    donation = new ethers.Contract(donationAddress, donationAbi, signer);
 
-      // signer-bound contracts
-      guestbookContract = new ethers.Contract(guestbookAddress, guestbookAbi, signer);
-      votingContract = new ethers.Contract(simpleVotingAddress, simpleVotingAbi, signer);
-      badgeContract = new ethers.Contract(badgeScoreAddress, badgeScoreAbi, signer);
-
-      // initial refresh
-      refreshGuestbookCount();
-      refreshMyBadges();
-    } catch (err) {
-      console.error(err);
-      alert("Wallet connection failed: " + (err.message || err));
-    }
+    refreshAll();
   };
 
-  function requireWallet() {
-    if (!signer || !account) {
-      alert("Please connect your wallet first");
-      return false;
-    }
-    return true;
+  async function refreshAll(){
+    if (!account) return;
+    // guestbook
+    setText("gbCount", (await guestbook.totalEntries()).toString());
+    // badge
+    setText("myBadges", (await badge.balanceOf(account)).toString());
+    // counter
+    setText("counterVal", (await counter.count()).toString());
+    // faucet balance
+    setText("faucetBal", (await faucet.balanceOf(account)).toString());
+    // donation
+    setText("donTotal", ethers.formatEther(await donation.total()));
+    setText("myDon", ethers.formatEther(await donation.myDonation()));
+    // todo list
+    const tasks = await todo.getTasks();
+    document.getElementById("todoList").innerText = tasks.map((t,i)=>
+      `${i}. ${t.text} [${t.done?"✔":" "}]`).join("\n");
   }
 
-  // --- Guestbook actions ---
-  async function refreshGuestbookCount() {
-    if (!guestbookContract) return;
-    const count = await guestbookContract.totalEntries();
-    setText('gbCount', count.toString());
-  }
-  document.getElementById('gbSignBtn').onclick = async () => {
-    if (!requireWallet()) return;
-    const text = document.getElementById('gbMsg').value;
-    try {
-      const tx = await guestbookContract.sign(text);
-      await tx.wait();
-      log("Signed Guestbook: " + text);
-      refreshGuestbookCount();
-    } catch (err) {
-      log("Error: " + (err.message || err));
-    }
+  const need = () => { if(!signer) {alert("Connect wallet first"); return false;} return true; };
+
+  // --- Guestbook ---
+  document.getElementById("gbSignBtn").onclick = async () => {
+    if (!need()) return;
+    const tx = await guestbook.sign(document.getElementById("gbMsg").value);
+    await tx.wait(); log("Signed guestbook");
+    refreshAll();
   };
 
-  // --- Voting actions ---
-  document.getElementById('voteYesBtn').onclick = async () => {
-    if (!requireWallet()) return;
-    try {
-      const tx = await votingContract.vote(1, true);
-      await tx.wait();
-      log("Voted YES on proposal 1");
-    } catch (err) {
-      log("Error: " + (err.message || err));
-    }
+  // --- Voting ---
+  document.getElementById("voteYesBtn").onclick = async () => {
+    if (!need()) return;
+    const tx = await voting.vote(1,true); await tx.wait();
+    log("Voted YES"); 
   };
-  document.getElementById('voteNoBtn').onclick = async () => {
-    if (!requireWallet()) return;
-    try {
-      const tx = await votingContract.vote(1, false);
-      await tx.wait();
-      log("Voted NO on proposal 1");
-    } catch (err) {
-      log("Error: " + (err.message || err));
-    }
+  document.getElementById("voteNoBtn").onclick = async () => {
+    if (!need()) return;
+    const tx = await voting.vote(1,false); await tx.wait();
+    log("Voted NO");
   };
 
-  // --- Badge Score actions ---
-  async function refreshMyBadges() {
-    if (!badgeContract || !account) return;
-    const count = await badgeContract.balanceOf(account);
-    setText('myBadges', count.toString());
-  }
-  document.getElementById('incScoreBtn').onclick = async () => {
-    if (!requireWallet()) return;
-    const entityId = document.getElementById('entityId').value;
-    const delta = document.getElementById('delta').value;
-    try {
-      const tx = await badgeContract.increaseScore(entityId, delta);
-      await tx.wait();
-      log(`Increased score for entity ${entityId} by ${delta}`);
-      refreshMyBadges();
-    } catch (err) {
-      log("Error: " + (err.message || err));
-    }
+  // --- Badge ---
+  document.getElementById("incScoreBtn").onclick = async () => {
+    if (!need()) return;
+    const tx = await badge.increaseScore(
+      document.getElementById("entityId").value,
+      document.getElementById("delta").value
+    );
+    await tx.wait(); log("Score increased"); 
+    refreshAll();
   };
+
+  // --- Counter ---
+  document.getElementById("incCounterBtn").onclick = async () => {
+    if (!need()) return;
+    const tx = await counter.inc(); await tx.wait();
+    refreshAll();
+  };
+  document.getElementById("decCounterBtn").onclick = async () => {
+    if (!need()) return;
+    try { const tx = await counter.dec(); await tx.wait(); }
+    catch(e){ log("Cannot decrement below 0"); }
+    refreshAll();
+  };
+
+  // --- Todo ---
+  document.getElementById("addTodoBtn").onclick = async () => {
+    if (!need()) return;
+    const tx = await todo.addTask(document.getElementById("todoText").value);
+    await tx.wait(); log("Task added");
+    refreshAll();
+  };
+  document.getElementById("toggleTodoBtn").onclick = async () => {
+    if (!need()) return;
+    const i = document.getElementById("toggleIndex").value;
+    try {
+      const tx = await todo.toggleTask(i); await tx.wait();
+      log("Task toggled");
+    } catch(e){ log("Bad index!"); }
+    refreshAll();
+  };
+
+  // --- Faucet ---
+  document.getElementById("claimBtn").onclick = async () => {
+    if (!need()) return;
+    try {
+      const tx = await faucet.claim(); await tx.wait();
+      log("Tokens claimed!");
+    } catch(e){ log("Already claimed?"); }
+    refreshAll();
+  };
+
+  // --- Donation ---
+  document.getElementById("donateBtn").onclick = async () => {
+    if (!need()) return;
+    const eth = document.getElementById("donAmount").value;
+    const tx = await donation.donate({ value: ethers.parseEther(eth) });
+    await tx.wait(); log(`Donated ${eth} ETH`);
+    refreshAll();
+  };
+
 })();
 </script>
 </body>
