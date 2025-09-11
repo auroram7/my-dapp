@@ -1,4 +1,57 @@
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My DApp Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 2rem; }
+    h2 { margin-top: 2rem; }
+    button { margin: 0.25rem 0; padding: 0.5rem 1rem; }
+    #logs { background: #f4f4f4; padding: 1rem; margin-top: 2rem; height: 200px; overflow-y: auto; }
+    .section { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>My Web3 Playground</h1>
+
+  <!-- Wallet -->
+  <div class="section">
+    <h2>Wallet</h2>
+    <button id="connectBtn">Connect Wallet</button>
+    <p>Account: <span id="acct">Not connected</span></p>
+    <p id="chainInfo"></p>
+  </div>
+
+  <!-- Guestbook -->
+  <div class="section">
+    <h2>Guestbook</h2>
+    <input id="gbMsg" placeholder="Write a message" />
+    <button id="gbSignBtn">Sign Guestbook</button>
+    <p>Total Entries: <span id="gbCount">0</span></p>
+  </div>
+
+  <!-- Voting -->
+  <div class="section">
+    <h2>Voting</h2>
+    <button id="voteYesBtn">Vote YES (proposal 1)</button>
+    <button id="voteNoBtn">Vote NO (proposal 1)</button>
+    <p>Check console/logs for results</p>
+  </div>
+
+  <!-- Badge Score -->
+  <div class="section">
+    <h2>Badge Score</h2>
+    <input id="entityId" placeholder="Entity ID" />
+    <input id="delta" placeholder="Increase By" />
+    <button id="incScoreBtn">Increase Score</button>
+    <p>My Badges: <span id="myBadges">0</span></p>
+  </div>
+
+  <!-- Logs -->
+  <h2>Logs</h2>
+  <div id="logs"></div>
+
 <script>
 (async function(){
   // --- Config: contract addresses ---
@@ -6,25 +59,17 @@
   const simpleVotingAddress = "0x593393079914635026344565312224f8c8282e4F";
   const badgeScoreAddress = "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75";
 
-  // --- ABIs (same as before, shortened here for clarity) ---
+  // --- ABIs ---
   const guestbookAbi = [
     "function sign(string message) external",
-    "function totalEntries() view returns (uint256)",
-    "function entryAt(uint256) view returns (address,uint256,string)"
+    "function totalEntries() view returns (uint256)"
   ];
   const simpleVotingAbi = [
-    "function createProposal(string,string,uint256) external returns (uint256)",
-    "function vote(uint256,bool) external",
-    "function proposalSummary(uint256) view returns (uint256,string,string,uint256,uint256,uint256,uint256)",
-    "function hasVoted(uint256,address) view returns (bool)"
+    "function vote(uint256,bool) external"
   ];
   const badgeScoreAbi = [
     "function scoreOf(uint256) view returns (uint256)",
     "function increaseScore(uint256,uint256) external",
-    "function badgeThreshold() view returns (uint256)",
-    "function nextTokenId() view returns (uint256)",
-    "function ownerOf(uint256) view returns (address)",
-    "function tokenURI(uint256) view returns (string)",
     "function balanceOf(address) view returns (uint256)"
   ];
 
@@ -45,23 +90,22 @@
     if (!window.ethereum) return alert('Install MetaMask or another wallet.');
     try {
       provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []); // request once
+      await provider.send("eth_requestAccounts", []); // only once
       signer = await provider.getSigner();
       account = await signer.getAddress();
-      document.getElementById('acct').innerText = account;
+      setText('acct', account);
       log("Connected: " + account);
 
       // chain info
       const network = await provider.getNetwork();
-      document.getElementById('chainInfo').innerText =
-        `Network: ${network.name} (chainId ${network.chainId})`;
+      setText('chainInfo', `Network: ${network.name} (chainId ${network.chainId})`);
 
       // signer-bound contracts
       guestbookContract = new ethers.Contract(guestbookAddress, guestbookAbi, signer);
       votingContract = new ethers.Contract(simpleVotingAddress, simpleVotingAbi, signer);
       badgeContract = new ethers.Contract(badgeScoreAddress, badgeScoreAbi, signer);
 
-      // do initial refresh
+      // initial refresh
       refreshGuestbookCount();
       refreshMyBadges();
     } catch (err) {
@@ -70,7 +114,6 @@
     }
   };
 
-  // --- Before any action, check wallet ---
   function requireWallet() {
     if (!signer || !account) {
       alert("Please connect your wallet first");
@@ -79,7 +122,12 @@
     return true;
   }
 
-  // Example use inside Guestbook
+  // --- Guestbook actions ---
+  async function refreshGuestbookCount() {
+    if (!guestbookContract) return;
+    const count = await guestbookContract.totalEntries();
+    setText('gbCount', count.toString());
+  }
   document.getElementById('gbSignBtn').onclick = async () => {
     if (!requireWallet()) return;
     const text = document.getElementById('gbMsg').value;
@@ -87,13 +135,54 @@
       const tx = await guestbookContract.sign(text);
       await tx.wait();
       log("Signed Guestbook: " + text);
+      refreshGuestbookCount();
     } catch (err) {
       log("Error: " + (err.message || err));
     }
   };
 
-  // The same requireWallet() check should wrap ALL other button handlers
-  // (vote, createProposal, increaseScore, etc.)
-  // That way they never call eth_requestAccounts again, only the first connect button does.
+  // --- Voting actions ---
+  document.getElementById('voteYesBtn').onclick = async () => {
+    if (!requireWallet()) return;
+    try {
+      const tx = await votingContract.vote(1, true);
+      await tx.wait();
+      log("Voted YES on proposal 1");
+    } catch (err) {
+      log("Error: " + (err.message || err));
+    }
+  };
+  document.getElementById('voteNoBtn').onclick = async () => {
+    if (!requireWallet()) return;
+    try {
+      const tx = await votingContract.vote(1, false);
+      await tx.wait();
+      log("Voted NO on proposal 1");
+    } catch (err) {
+      log("Error: " + (err.message || err));
+    }
+  };
+
+  // --- Badge Score actions ---
+  async function refreshMyBadges() {
+    if (!badgeContract || !account) return;
+    const count = await badgeContract.balanceOf(account);
+    setText('myBadges', count.toString());
+  }
+  document.getElementById('incScoreBtn').onclick = async () => {
+    if (!requireWallet()) return;
+    const entityId = document.getElementById('entityId').value;
+    const delta = document.getElementById('delta').value;
+    try {
+      const tx = await badgeContract.increaseScore(entityId, delta);
+      await tx.wait();
+      log(`Increased score for entity ${entityId} by ${delta}`);
+      refreshMyBadges();
+    } catch (err) {
+      log("Error: " + (err.message || err));
+    }
+  };
 })();
 </script>
+</body>
+</html>
