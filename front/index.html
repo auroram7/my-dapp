@@ -1,0 +1,401 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>My DApp Hub — Guestbook / Voting / Badges</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 12px; color: #111; }
+    h1,h2 { color: #0d47a1; }
+    .card { border: 1px solid #ddd; padding: 12px; margin: 12px 0; border-radius: 8px; }
+    label { display:block; margin-top:8px; font-weight:600; }
+    input[type="text"], input[type="number"], textarea { width:100%; padding:8px; margin-top:6px; box-sizing:border-box; }
+    button { margin-top:8px; padding:8px 12px; border-radius:6px; cursor:pointer; }
+    .small { font-size: 0.9rem; color:#555; }
+    .list { margin-top:8px; }
+    .entry { border-top:1px dashed #eee; padding:8px 0; }
+    .error { color: #b00020; font-weight:600; }
+    pre { background:#f7f7f7; padding:8px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>My DApp Hub</h1>
+  <p class="small">Interact with Guestbook, SimpleVoting and BadgeScore contracts you deployed.</p>
+
+  <div class="card">
+    <button id="connectBtn">Connect Wallet</button>
+    <span id="acct" class="small"></span>
+    <div id="chainInfo" class="small"></div>
+  </div>
+
+  <!-- Guestbook -->
+  <div class="card" id="guestbookCard">
+    <h2>Guestbook</h2>
+    <label for="gbMsg">Message (max 1024 chars)</label>
+    <textarea id="gbMsg" rows="3" placeholder="Write something public..."></textarea>
+    <button id="gbSignBtn">Sign Guestbook</button>
+    <div id="gbStatus" class="small"></div>
+    <div class="list">
+      <button id="gbRefresh">Refresh Entries</button>
+      <div id="gbCount" class="small"></div>
+      <div id="gbEntries"></div>
+    </div>
+  </div>
+
+  <!-- Voting -->
+  <div class="card" id="votingCard">
+    <h2>Simple Voting</h2>
+
+    <div>
+      <strong>Create Proposal (admin only)</strong>
+      <label for="pTitle">Title</label>
+      <input id="pTitle" type="text" placeholder="Proposal title" />
+      <label for="pDesc">Description</label>
+      <textarea id="pDesc" rows="2" placeholder="Short description"></textarea>
+      <label for="pDuration">Duration (seconds, min 60)</label>
+      <input id="pDuration" type="number" value="300" />
+      <button id="createPropBtn">Create Proposal</button>
+      <div id="createPropStatus" class="small"></div>
+    </div>
+
+    <hr />
+
+    <div>
+      <label for="propId">Load proposal by ID</label>
+      <input id="propId" type="number" placeholder="proposal id" />
+      <button id="loadPropBtn">Load Proposal</button>
+      <div id="propSummary" class="small"></div>
+      <button id="voteYesBtn">Vote YES</button>
+      <button id="voteNoBtn">Vote NO</button>
+      <div id="voteStatus" class="small"></div>
+    </div>
+  </div>
+
+  <!-- BadgeScore -->
+  <div class="card" id="badgeCard">
+    <h2>BadgeScore</h2>
+    <div class="small">Badge threshold and minted badges (tokens minted to the address that triggered the badge)</div>
+
+    <label for="entityId">Entity / Building ID (uint)</label>
+    <input id="entityId" type="number" value="1" />
+    <label for="delta">Increase points by (uint)</label>
+    <input id="delta" type="number" value="10" />
+
+    <button id="increaseScoreBtn">Increase Score</button>
+    <div id="scoreStatus" class="small"></div>
+
+    <hr />
+    <div>
+      <button id="refreshBadgeInfo">Refresh My Badges</button>
+      <div id="badgeInfo" class="small"></div>
+      <div id="myBadges"></div>
+    </div>
+  </div>
+
+  <div id="console" class="card small">
+    <strong>Logs</strong>
+    <div id="logs"></div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.min.js"></script>
+<script>
+(async function(){
+  // --- Config: addresses & ABIs ---
+  const guestbookAddress = "0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E";
+  const simpleVotingAddress = "0x593393079914635026344565312224f8c8282e4F";
+  const badgeScoreAddress = "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75";
+
+  const guestbookAbi = [
+    "function sign(string message) external",
+    "function totalEntries() view returns (uint256)",
+    "function entryAt(uint256) view returns (address,uint256,string)",
+    "event NewEntry(uint256 indexed index, address indexed author, uint256 timestamp, string message)"
+  ];
+
+  const simpleVotingAbi = [
+    "function createProposal(string title, string description, uint256 durationSeconds) external returns (uint256)",
+    "function vote(uint256 id, bool support) external",
+    "function proposalSummary(uint256 id) view returns (uint256,string,string,uint256,uint256,uint256,uint256)",
+    "function hasVoted(uint256 id, address voter) view returns (bool)",
+    "event ProposalCreated(uint256 indexed id, string title, uint256 startTs, uint256 endTs)",
+    "event Voted(uint256 indexed id, address indexed voter, bool support)"
+  ];
+
+  const badgeScoreAbi = [
+    "function scoreOf(uint256 entityId) view returns (uint256)",
+    "function increaseScore(uint256 entityId, uint256 delta) external",
+    "function badgeThreshold() view returns (uint256)",
+    "function nextTokenId() view returns (uint256)",
+    "function ownerOf(uint256 tokenId) view returns (address)",
+    "function tokenURI(uint256 tokenId) view returns (string)",
+    "function balanceOf(address owner) view returns (uint256)",
+    "event ScoreIncreased(uint256 indexed entityId, uint256 oldScore, uint256 newScore)",
+    "event BadgeMinted(uint256 indexed tokenId, uint256 indexed entityId, address owner)"
+  ];
+
+  // --- state ---
+  let provider = null;
+  let signer = null;
+  let account = null;
+
+  // contracts (provider-bound initially)
+  let guestbookContract;
+  let votingContract;
+  let badgeContract;
+
+  // --- helpers ---
+  function log(msg) {
+    const el = document.getElementById('logs');
+    const now = new Date().toLocaleTimeString();
+    el.innerHTML = `<div>[${now}] ${msg}</div>` + el.innerHTML;
+  }
+  function setText(id, txt) { document.getElementById(id).innerText = txt; }
+
+  // Initialize provider-only contract instances (will rebind to signer after connect)
+  try {
+    // If window.ethereum exists, create provider; else ethers falls back to default provider (not ideal)
+    if (window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+      guestbookContract = new ethers.Contract(guestbookAddress, guestbookAbi, provider);
+      votingContract = new ethers.Contract(simpleVotingAddress, simpleVotingAbi, provider);
+      badgeContract = new ethers.Contract(badgeScoreAddress, badgeScoreAbi, provider);
+    } else {
+      setText('gbStatus','No wallet (MetaMask) found. Some read calls may fail.');
+      log('No window.ethereum');
+    }
+  } catch (err) {
+    console.error(err);
+    log('Error creating provider contracts: ' + err.message);
+  }
+
+  // connect wallet
+  document.getElementById('connectBtn').onclick = async () => {
+    if (!window.ethereum) return alert('Install MetaMask or another injected wallet.');
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    document.getElementById('acct').innerText = account;
+    log('Connected: ' + account);
+
+    // chain info
+    try {
+      const network = await provider.getNetwork();
+      document.getElementById('chainInfo').innerText = `Network: ${network.name} (chainId ${network.chainId})`;
+    } catch(e) {}
+
+    // attach signer to contracts
+    guestbookContract = guestbookContract.connect(signer);
+    votingContract = votingContract.connect(signer);
+    badgeContract = badgeContract.connect(signer);
+
+    // refresh some UI
+    refreshGuestbookCount();
+    refreshMyBadges();
+  };
+
+  // ------------------------
+  // Guestbook functions
+  // ------------------------
+  async function refreshGuestbookCount() {
+    try {
+      const n = await guestbookContract.totalEntries();
+      setText('gbCount', 'Total entries: ' + n.toString());
+      // display last up to 10 entries
+      const max = Math.min(10, Number(n));
+      const container = document.getElementById('gbEntries');
+      container.innerHTML = '';
+      if (max === 0) { container.innerText = 'No entries yet.'; return; }
+      for (let i = Math.max(0, Number(n) - max); i < Number(n); i++) {
+        try {
+          const e = await guestbookContract.entryAt(i);
+          const author = e[0];
+          const ts = new Date(Number(e[1]) * 1000).toLocaleString();
+          const msg = e[2];
+          const div = document.createElement('div');
+          div.className = 'entry';
+          div.innerHTML = `<div><strong>#${i}</strong> by ${author} @ ${ts}</div><div>${escapeHtml(msg)}</div>`;
+          container.appendChild(div);
+        } catch (err) {
+          // skip if single entry call fails
+        }
+      }
+    } catch (err) {
+      setText('gbCount', 'Error reading guestbook: ' + err.message);
+      log('Guestbook read error: ' + err.message);
+    }
+  }
+
+  document.getElementById('gbRefresh').onclick = refreshGuestbookCount;
+
+  document.getElementById('gbSignBtn').onclick = async () => {
+    const text = document.getElementById('gbMsg').value || '';
+    if (!text || text.length === 0) return alert('Write a message first');
+    if (!signer) return alert('Connect wallet first');
+    try {
+      setText('gbStatus', 'Sending transaction...');
+      const tx = await guestbookContract.sign(text);
+      await tx.wait();
+      setText('gbStatus', 'Signed! tx mined.');
+      log('Guestbook signed by ' + account);
+      document.getElementById('gbMsg').value = '';
+      refreshGuestbookCount();
+    } catch (err) {
+      setText('gbStatus', 'Error: ' + (err?.message || err));
+      log('Guestbook sign error: ' + (err?.message || err));
+    }
+  };
+
+  // ------------------------
+  // Voting functions
+  // ------------------------
+  document.getElementById('createPropBtn').onclick = async () => {
+    if (!signer) return alert('Connect wallet first');
+    const title = document.getElementById('pTitle').value || '';
+    const desc = document.getElementById('pDesc').value || '';
+    const dur = Number(document.getElementById('pDuration').value || 300);
+    if (!title) return alert('Title required');
+    try {
+      setText('createPropStatus','Creating...');
+      const tx = await votingContract.createProposal(title, desc, dur);
+      const receipt = await tx.wait();
+      // try to parse event to find id
+      setText('createPropStatus','Created. Check explorer or events for ID.');
+      log('Created proposal (tx): ' + receipt.transactionHash);
+    } catch (err) {
+      setText('createPropStatus','Error: ' + (err?.message || err));
+      log('Create proposal error: ' + (err?.message || err));
+    }
+  };
+
+  document.getElementById('loadPropBtn').onclick = async () => {
+    const id = Number(document.getElementById('propId').value || 0);
+    if (id <= 0) return alert('Enter proposal id > 0');
+    try {
+      const p = await votingContract.proposalSummary(id);
+      // returns (id, title, desc, yes, no, startTs, endTs)
+      const html = [
+        `<div><strong>#${p[0]}</strong> ${escapeHtml(p[1])}</div>`,
+        `<div>${escapeHtml(p[2])}</div>`,
+        `<div>Yes: ${p[3].toString()} | No: ${p[4].toString()}</div>`,
+        `<div>Start: ${new Date(Number(p[5]) * 1000).toLocaleString()}</div>`,
+        `<div>End: ${new Date(Number(p[6]) * 1000).toLocaleString()}</div>`
+      ].join('');
+      document.getElementById('propSummary').innerHTML = html;
+      // also update whether connected user voted
+      if (signer && account) {
+        const voted = await votingContract.hasVoted(id, account);
+        setText('voteStatus', 'You voted: ' + (voted ? 'YES/NO (already voted)' : 'Not voted yet'));
+      } else {
+        setText('voteStatus','Connect to check vote status.');
+      }
+    } catch (err) {
+      setText('propSummary','Error loading proposal: ' + (err?.message || err));
+      log('Load proposal error: ' + (err?.message || err));
+    }
+  };
+
+  document.getElementById('voteYesBtn').onclick = async () => voteOnProp(true);
+  document.getElementById('voteNoBtn').onclick = async () => voteOnProp(false);
+
+  async function voteOnProp(support) {
+    if (!signer) return alert('Connect wallet first');
+    const id = Number(document.getElementById('propId').value || 0);
+    if (id <= 0) return alert('Enter proposal id > 0');
+    try {
+      setText('voteStatus','Sending vote...');
+      const tx = await votingContract.vote(id, support);
+      await tx.wait();
+      setText('voteStatus','Voted. Thank you.');
+      log('Voted on proposal ' + id + ' support=' + support);
+    } catch (err) {
+      setText('voteStatus','Vote error: ' + (err?.message || err));
+      log('Vote error: ' + (err?.message || err));
+    }
+  }
+
+  // ------------------------
+  // BadgeScore functions
+  // ------------------------
+  document.getElementById('increaseScoreBtn').onclick = async () => {
+    if (!signer) return alert('Connect wallet first');
+    const entityId = Number(document.getElementById('entityId').value || 0);
+    const delta = Number(document.getElementById('delta').value || 0);
+    if (entityId < 0 || delta <= 0) return alert('Enter valid entity id and delta > 0');
+    try {
+      setText('scoreStatus','Sending tx...');
+      const tx = await badgeContract.increaseScore(entityId, delta);
+      await tx.wait();
+      setText('scoreStatus','Score increased. Refresh badges to see if you minted one.');
+      log(`Increased score for ${entityId} by ${delta}`);
+      refreshBadgeStatus(entityId);
+      refreshMyBadges();
+    } catch (err) {
+      setText('scoreStatus','Error: ' + (err?.message || err));
+      log('IncreaseScore error: ' + (err?.message || err));
+    }
+  };
+
+  async function refreshBadgeStatus(entityId) {
+    try {
+      const sc = await badgeContract.scoreOf(entityId);
+      const thr = await badgeContract.badgeThreshold();
+      setText('scoreStatus', `Entity ${entityId} score: ${sc.toString()} (threshold ${thr.toString()})`);
+    } catch (err) {
+      setText('scoreStatus','Error reading score: ' + (err?.message || err));
+      log('Badge read error: ' + (err?.message || err));
+    }
+  }
+
+  document.getElementById('refreshBadgeInfo').onclick = refreshMyBadges;
+
+  async function refreshMyBadges() {
+    if (!provider) return;
+    try {
+      const myAddr = account || (await provider.listAccounts())[0];
+      if (!myAddr) { setText('badgeInfo','Connect wallet to list your badges'); return; }
+      const balance = await badgeContract.balanceOf(myAddr);
+      const nextIdBN = await badgeContract.nextTokenId();
+      const nextId = Number(nextIdBN);
+      setText('badgeInfo', `Your badge balance: ${balance.toString()}. Scanning minted tokens up to id ${nextId - 1} (this may be slow).`);
+
+      const container = document.getElementById('myBadges');
+      container.innerHTML = '';
+      for (let t = 1; t < nextId; t++) {
+        try {
+          const owner = await badgeContract.ownerOf(t);
+          if (owner.toLowerCase() === myAddr.toLowerCase()) {
+            const uri = await badgeContract.tokenURI(t).catch(()=>"(no uri)");
+            const div = document.createElement('div');
+            div.className = 'entry';
+            div.innerHTML = `<div><strong>Token #${t}</strong></div><div>${escapeHtml(uri)}</div>`;
+            container.appendChild(div);
+          }
+        } catch (err) {
+          // ownerOf may revert for nonexistent token; skip
+        }
+      }
+    } catch (err) {
+      setText('badgeInfo','Error reading badges: ' + (err?.message || err));
+      log('Badge refresh error: ' + (err?.message || err));
+    }
+  }
+
+  // utility: escape HTML
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  // initial reads (if provider present)
+  if (provider) {
+    refreshGuestbookCount();
+    // don't auto-scan badges until connected
+  }
+})();
+</script>
+</body>
+</html>
