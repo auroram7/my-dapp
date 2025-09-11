@@ -19,3 +19,6 @@ https://basescan.org/address/0x079cbf49037898d94ea730e39b998762089db223#code
 TokenFaucet: 0x4e45e75209c61508540AB70886F9d0406C3e1211
 https://basescan.org/address/0x4e45e75209c61508540ab70886f9d0406c3e1211#code
 
+DonationBox: 0x7389AD9e829FAA7eA1b90F05b7DcFeb04913925c
+https://basescan.org/address/0x7389ad9e829faa7ea1b90f05b7dcfeb04913925c#code
+
