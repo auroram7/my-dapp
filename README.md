@@ -23,3 +23,6 @@ https://basescan.org/address/0x4e45e75209c61508540ab70886f9d0406c3e1211#code
 DonationBox: 0x7389AD9e829FAA7eA1b90F05b7DcFeb04913925c
 https://basescan.org/address/0x7389ad9e829faa7ea1b90f05b7dcfeb04913925c#code
 
+Greeter: 0xc8a4DaB25C8be768bA7BA9d3dda7ed28C8C21fD9
+https://basescan.org/address/0xc8a4dab25c8be768ba7ba9d3dda7ed28c8c21fd9#code
+
