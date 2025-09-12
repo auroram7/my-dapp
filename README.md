@@ -26,3 +26,8 @@ https://basescan.org/address/0x7389ad9e829faa7ea1b90f05b7dcfeb04913925c#code
 Greeter: 0xc8a4DaB25C8be768bA7BA9d3dda7ed28C8C21fD9
 https://basescan.org/address/0xc8a4dab25c8be768ba7ba9d3dda7ed28c8c21fd9#code
 
+SimpleBank: 0x01D42be237b04e1f9fbBf79211252c4A029F803D
+https://basescan.org/address/0x01d42be237b04e1f9fbbf79211252c4a029f803d#code
+
+Poll: 0x826675d749908FAECEAc74eb721BEcD1Bd5A157f
+https://basescan.org/address/0x826675d749908faeceac74eb721becd1bd5a157f#code
