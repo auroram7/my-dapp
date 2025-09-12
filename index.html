@@ -2,267 +2,237 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>My Web3 Playground</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
+  <title>My DApp Hub</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 900px; margin: auto; padding: 2rem; }
-    h2 { margin-top: 2rem; }
-    button { margin: 0.25rem 0; padding: 0.5rem 1rem; }
-    input { padding: 0.3rem; margin: 0.2rem; }
-    #logs { background: #f4f4f4; padding: 1rem; margin-top: 2rem; height: 200px; overflow-y: auto; }
-    .section { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
+    .card { background: #fff; padding: 16px; margin: 12px 0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    button { padding: 6px 12px; margin: 4px; border: none; border-radius: 6px; background: #007bff; color: #fff; cursor: pointer; }
+    button:disabled { background: #aaa; }
+    input { padding: 6px; margin: 4px; border-radius: 4px; border: 1px solid #ccc; }
+    h2 { margin-top: 0; }
   </style>
 </head>
 <body>
-  <h1>My Web3 Playground</h1>
-
-  <!-- Wallet -->
-  <div class="section">
-    <h2>Wallet</h2>
-    <button id="connectBtn">Connect Wallet</button>
-    <p>Account: <span id="acct">Not connected</span></p>
-    <p id="chainInfo"></p>
-  </div>
+  <h1>📜 My Smart Contracts Dashboard</h1>
+  <button id="connectBtn">Connect Wallet</button>
+  <p id="status">Not connected</p>
 
   <!-- Guestbook -->
-  <div class="section">
+  <div class="card">
     <h2>Guestbook</h2>
-    <input id="gbMsg" placeholder="Write a message" />
-    <button id="gbSignBtn">Sign Guestbook</button>
-    <p>Total Entries: <span id="gbCount">0</span></p>
+    <input id="guestMsg" placeholder="Write message">
+    <button onclick="signGuestbook()">Sign</button>
   </div>
 
-  <!-- Voting -->
-  <div class="section">
-    <h2>Voting</h2>
-    <button id="voteYesBtn">Vote YES (proposal 1)</button>
-    <button id="voteNoBtn">Vote NO (proposal 1)</button>
+  <!-- SimpleVoting -->
+  <div class="card">
+    <h2>SimpleVoting</h2>
+    <input id="voteIndex" type="number" placeholder="Option index">
+    <button onclick="castVote()">Vote</button>
   </div>
 
-  <!-- Badge Score -->
-  <div class="section">
-    <h2>Badge Score</h2>
-    <input id="entityId" placeholder="Entity ID" />
-    <input id="delta" placeholder="Increase By" />
-    <button id="incScoreBtn">Increase Score</button>
-    <p>My Badges: <span id="myBadges">0</span></p>
+  <!-- BadgeScore -->
+  <div class="card">
+    <h2>BadgeScore</h2>
+    <input id="entityId" type="number" placeholder="Entity ID">
+    <input id="delta" type="number" placeholder="Increase by">
+    <button onclick="increaseScore()">Increase Score</button>
   </div>
 
   <!-- Counter -->
-  <div class="section">
+  <div class="card">
     <h2>Counter</h2>
-    <button id="incCounterBtn">Increment</button>
-    <button id="decCounterBtn">Decrement</button>
-    <p>Value: <span id="counterVal">0</span></p>
+    <button onclick="incCounter()">Increment</button>
+    <button onclick="getCounter()">Get Value</button>
+    <p id="counterVal"></p>
   </div>
 
-  <!-- Todo List -->
-  <div class="section">
-    <h2>Todo List</h2>
-    <input id="todoText" placeholder="New Task" />
-    <button id="addTodoBtn">Add Task</button>
-    <input id="toggleIndex" type="number" placeholder="Index #" />
-    <button id="toggleTodoBtn">Toggle Done</button>
-    <pre id="todoList"></pre>
+  <!-- TodoList -->
+  <div class="card">
+    <h2>TodoList</h2>
+    <input id="taskText" placeholder="Task text">
+    <button onclick="addTask()">Add Task</button>
+    <input id="taskIndex" type="number" placeholder="Index">
+    <button onclick="toggleTask()">Toggle Task</button>
   </div>
 
-  <!-- Token Faucet -->
-  <div class="section">
-    <h2>Token Faucet</h2>
-    <button id="claimBtn">Claim Free Tokens</button>
-    <p>My Balance: <span id="faucetBal">0</span></p>
+  <!-- TokenFaucet -->
+  <div class="card">
+    <h2>TokenFaucet</h2>
+    <button onclick="claimTokens()">Claim</button>
   </div>
 
-  <!-- Donation Box -->
-  <div class="section">
-    <h2>Donation Box</h2>
-    <input id="donAmount" type="number" placeholder="Amount in ETH" />
-    <button id="donateBtn">Donate</button>
-    <p>Total Donated: <span id="donTotal">0</span> ETH</p>
-    <p>Your Donations: <span id="myDon">0</span> ETH</p>
+  <!-- DonationBox -->
+  <div class="card">
+    <h2>DonationBox</h2>
+    <input id="donationAmt" type="number" placeholder="ETH amount">
+    <button onclick="donate()">Donate</button>
   </div>
 
-  <!-- Logs -->
-  <h2>Logs</h2>
-  <div id="logs"></div>
+  <!-- Greeter -->
+  <div class="card">
+    <h2>Greeter</h2>
+    <button onclick="getGreeting()">Get Greeting</button>
+    <p id="greetingText"></p>
+    <input id="newGreeting" placeholder="New greeting">
+    <button onclick="setGreeting()">Set Greeting</button>
+  </div>
+
+  <!-- SimpleBank -->
+  <div class="card">
+    <h2>SimpleBank</h2>
+    <input id="depositAmt" type="number" placeholder="ETH amount">
+    <button onclick="deposit()">Deposit</button>
+    <input id="withdrawAmt" type="number" placeholder="ETH amount">
+    <button onclick="withdraw()">Withdraw</button>
+    <button onclick="checkBalance()">Check Balance</button>
+    <p id="bankBalance"></p>
+  </div>
+
+  <!-- Poll -->
+  <div class="card">
+    <h2>Poll</h2>
+    <button onclick="voteA()">Vote Option A</button>
+    <button onclick="voteB()">Vote Option B</button>
+    <button onclick="checkVotes()">Check Votes</button>
+    <p id="pollResult"></p>
+  </div>
 
 <script>
-(async function(){
-  // --- Addresses ---
-  const guestbookAddress   = "0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E";
-  const votingAddress      = "0x593393079914635026344565312224f8c8282e4F";
-  const badgeAddress       = "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75";
-  const counterAddress     = "0xf13C948A5ce9e4f4E3c8c2Ad2aF840b0EaE98601";
-  const todoAddress        = "0x079cBF49037898d94eA730e39B998762089Db223";
-  const faucetAddress      = "0x4e45e75209c61508540AB70886F9d0406C3e1211";
-  const donationAddress    = "0x7389AD9e829FAA7eA1b90F05b7DcFeb04913925c";
+let provider, signer;
 
-  // --- ABIs ---
-  const guestbookAbi = [
-    "function sign(string message) external",
-    "function totalEntries() view returns (uint256)"
-  ];
-  const votingAbi = [ "function vote(uint256,bool) external" ];
-  const badgeAbi = [
-    "function scoreOf(uint256) view returns (uint256)",
-    "function increaseScore(uint256,uint256) external",
-    "function balanceOf(address) view returns (uint256)"
-  ];
-  const counterAbi = [
-    "function count() view returns (uint256)",
-    "function inc() external",
-    "function dec() external"
-  ];
-  const todoAbi = [
-    "function addTask(string text) external",
-    "function toggleTask(uint256 i) external",
-    "function getTasks() view returns (tuple(string text,bool done)[])"
-  ];
-  const faucetAbi = [
-    "function claim() external",
-    "function balanceOf(address) view returns (uint256)"
-  ];
-  const donationAbi = [
-    "function donate() payable external",
-    "function total() view returns (uint256)",
-    "function myDonation() view returns (uint256)"
-  ];
+// contract addresses
+const addr = {
+  guestbook: "0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E",
+  simpleVoting: "0x593393079914635026344565312224f8c8282e4F",
+  badgeScore: "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75",
+  counter: "0xf13C948A5ce9e4f4E3c8c2Ad2aF840b0EaE98601",
+  todo: "0x079cBF49037898d94eA730e39B998762089Db223",
+  faucet: "0x4e45e75209c61508540AB70886F9d0406C3e1211",
+  donation: "0x7389AD9e829FAA7eA1b90F05b7DcFeb04913925c",
+  greeter: "0xc8a4DaB25C8be768bA7BA9d3dda7ed28C8C21fD9",
+  bank: "0x01D42be237b04e1f9fbBf79211252c4A029F803D",
+  poll: "0x826675d749908FAECEAc74eb721BEcD1Bd5A157f"
+};
 
-  // --- State ---
-  let provider, signer, account;
-  let guestbook, voting, badge, counter, todo, faucet, donation;
+// minimal ABI snippets
+const abi = {
+  guestbook: ["function sign(string memory)"],
+  simpleVoting: ["function vote(uint256 option)"],
+  badgeScore: ["function increaseScore(uint256,uint256)"],
+  counter: ["function increment()","function value() view returns(uint256)"],
+  todo: ["function addTask(string calldata)","function toggleTask(uint256)"],
+  faucet: ["function claim()"],
+  donation: ["function donate() payable"],
+  greeter: ["function greet() view returns(string)","function setGreeting(string calldata)"],
+  bank: ["function deposit() payable","function withdraw(uint256)","function balance(address) view returns(uint256)"],
+  poll: ["function vote(bool)","function votesA() view returns(uint256)","function votesB() view returns(uint256)"]
+};
 
-  // --- Helpers ---
-  const log = m => {
-    const el = document.getElementById("logs");
-    el.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${m}</div>` + el.innerHTML;
-  };
-  const setText = (id, t) => document.getElementById(id).innerText = t;
+async function connect() {
+  if (!window.ethereum) return alert("No wallet found");
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  document.getElementById("status").innerText = "Connected: " + await signer.getAddress();
+}
+document.getElementById("connectBtn").onclick = connect;
 
-  // --- Connect Wallet ---
-  document.getElementById("connectBtn").onclick = async () => {
-    if (!window.ethereum) return alert("Install MetaMask!");
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    account = await signer.getAddress();
-    setText("acct", account);
-    log("Connected: " + account);
+// Guestbook
+async function signGuestbook() {
+  const c = new ethers.Contract(addr.guestbook, abi.guestbook, signer);
+  await c.sign(document.getElementById("guestMsg").value);
+}
 
-    // instantiate contracts
-    guestbook = new ethers.Contract(guestbookAddress, guestbookAbi, signer);
-    voting   = new ethers.Contract(votingAddress, votingAbi, signer);
-    badge    = new ethers.Contract(badgeAddress, badgeAbi, signer);
-    counter  = new ethers.Contract(counterAddress, counterAbi, signer);
-    todo     = new ethers.Contract(todoAddress, todoAbi, signer);
-    faucet   = new ethers.Contract(faucetAddress, faucetAbi, signer);
-    donation = new ethers.Contract(donationAddress, donationAbi, signer);
+// SimpleVoting
+async function castVote() {
+  const c = new ethers.Contract(addr.simpleVoting, abi.simpleVoting, signer);
+  await c.vote(document.getElementById("voteIndex").value);
+}
 
-    refreshAll();
-  };
+// BadgeScore
+async function increaseScore() {
+  const c = new ethers.Contract(addr.badgeScore, abi.badgeScore, signer);
+  await c.increaseScore(document.getElementById("entityId").value, document.getElementById("delta").value);
+}
 
-  async function refreshAll(){
-    if (!account) return;
-    // guestbook
-    setText("gbCount", (await guestbook.totalEntries()).toString());
-    // badge
-    setText("myBadges", (await badge.balanceOf(account)).toString());
-    // counter
-    setText("counterVal", (await counter.count()).toString());
-    // faucet balance
-    setText("faucetBal", (await faucet.balanceOf(account)).toString());
-    // donation
-    setText("donTotal", ethers.formatEther(await donation.total()));
-    setText("myDon", ethers.formatEther(await donation.myDonation()));
-    // todo list
-    const tasks = await todo.getTasks();
-    document.getElementById("todoList").innerText = tasks.map((t,i)=>
-      `${i}. ${t.text} [${t.done?"✔":" "}]`).join("\n");
-  }
+// Counter
+async function incCounter() {
+  const c = new ethers.Contract(addr.counter, abi.counter, signer);
+  await c.increment();
+}
+async function getCounter() {
+  const c = new ethers.Contract(addr.counter, abi.counter, provider);
+  document.getElementById("counterVal").innerText = await c.value();
+}
 
-  const need = () => { if(!signer) {alert("Connect wallet first"); return false;} return true; };
+// TodoList
+async function addTask() {
+  const c = new ethers.Contract(addr.todo, abi.todo, signer);
+  await c.addTask(document.getElementById("taskText").value);
+}
+async function toggleTask() {
+  const c = new ethers.Contract(addr.todo, abi.todo, signer);
+  await c.toggleTask(document.getElementById("taskIndex").value);
+}
 
-  // --- Guestbook ---
-  document.getElementById("gbSignBtn").onclick = async () => {
-    if (!need()) return;
-    const tx = await guestbook.sign(document.getElementById("gbMsg").value);
-    await tx.wait(); log("Signed guestbook");
-    refreshAll();
-  };
+// Faucet
+async function claimTokens() {
+  const c = new ethers.Contract(addr.faucet, abi.faucet, signer);
+  await c.claim();
+}
 
-  // --- Voting ---
-  document.getElementById("voteYesBtn").onclick = async () => {
-    if (!need()) return;
-    const tx = await voting.vote(1,true); await tx.wait();
-    log("Voted YES"); 
-  };
-  document.getElementById("voteNoBtn").onclick = async () => {
-    if (!need()) return;
-    const tx = await voting.vote(1,false); await tx.wait();
-    log("Voted NO");
-  };
+// Donation
+async function donate() {
+  const amt = document.getElementById("donationAmt").value;
+  const c = new ethers.Contract(addr.donation, abi.donation, signer);
+  await c.donate({ value: ethers.utils.parseEther(amt) });
+}
 
-  // --- Badge ---
-  document.getElementById("incScoreBtn").onclick = async () => {
-    if (!need()) return;
-    const tx = await badge.increaseScore(
-      document.getElementById("entityId").value,
-      document.getElementById("delta").value
-    );
-    await tx.wait(); log("Score increased"); 
-    refreshAll();
-  };
+// Greeter
+async function getGreeting() {
+  const c = new ethers.Contract(addr.greeter, abi.greeter, provider);
+  document.getElementById("greetingText").innerText = await c.greet();
+}
+async function setGreeting() {
+  const c = new ethers.Contract(addr.greeter, abi.greeter, signer);
+  await c.setGreeting(document.getElementById("newGreeting").value);
+}
 
-  // --- Counter ---
-  document.getElementById("incCounterBtn").onclick = async () => {
-    if (!need()) return;
-    const tx = await counter.inc(); await tx.wait();
-    refreshAll();
-  };
-  document.getElementById("decCounterBtn").onclick = async () => {
-    if (!need()) return;
-    try { const tx = await counter.dec(); await tx.wait(); }
-    catch(e){ log("Cannot decrement below 0"); }
-    refreshAll();
-  };
+// Bank
+async function deposit() {
+  const amt = document.getElementById("depositAmt").value;
+  const c = new ethers.Contract(addr.bank, abi.bank, signer);
+  await c.deposit({ value: ethers.utils.parseEther(amt) });
+}
+async function withdraw() {
+  const amt = document.getElementById("withdrawAmt").value;
+  const c = new ethers.Contract(addr.bank, abi.bank, signer);
+  await c.withdraw(ethers.utils.parseEther(amt));
+}
+async function checkBalance() {
+  const c = new ethers.Contract(addr.bank, abi.bank, provider);
+  const addrUser = await signer.getAddress();
+  const bal = await c.balance(addrUser);
+  document.getElementById("bankBalance").innerText = ethers.utils.formatEther(bal) + " ETH";
+}
 
-  // --- Todo ---
-  document.getElementById("addTodoBtn").onclick = async () => {
-    if (!need()) return;
-    const tx = await todo.addTask(document.getElementById("todoText").value);
-    await tx.wait(); log("Task added");
-    refreshAll();
-  };
-  document.getElementById("toggleTodoBtn").onclick = async () => {
-    if (!need()) return;
-    const i = document.getElementById("toggleIndex").value;
-    try {
-      const tx = await todo.toggleTask(i); await tx.wait();
-      log("Task toggled");
-    } catch(e){ log("Bad index!"); }
-    refreshAll();
-  };
-
-  // --- Faucet ---
-  document.getElementById("claimBtn").onclick = async () => {
-    if (!need()) return;
-    try {
-      const tx = await faucet.claim(); await tx.wait();
-      log("Tokens claimed!");
-    } catch(e){ log("Already claimed?"); }
-    refreshAll();
-  };
-
-  // --- Donation ---
-  document.getElementById("donateBtn").onclick = async () => {
-    if (!need()) return;
-    const eth = document.getElementById("donAmount").value;
-    const tx = await donation.donate({ value: ethers.parseEther(eth) });
-    await tx.wait(); log(`Donated ${eth} ETH`);
-    refreshAll();
-  };
-
-})();
+// Poll
+async function voteA() {
+  const c = new ethers.Contract(addr.poll, abi.poll, signer);
+  await c.vote(true);
+}
+async function voteB() {
+  const c = new ethers.Contract(addr.poll, abi.poll, signer);
+  await c.vote(false);
+}
+async function checkVotes() {
+  const c = new ethers.Contract(addr.poll, abi.poll, provider);
+  const a = await c.votesA();
+  const b = await c.votesB();
+  document.getElementById("pollResult").innerText = `Option A: ${a} votes | Option B: ${b} votes`;
+}
 </script>
 </body>
 </html>
