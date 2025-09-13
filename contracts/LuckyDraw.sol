@@ -5,7 +5,7 @@ contract LuckyDraw {
     address public owner;
     address[] public players;
 
-    event Entered(address indexed player);
+    event Entered(address indexed player, uint256 amount);
     event WinnerPicked(address indexed winner, uint256 prize);
 
     constructor() {
@@ -13,9 +13,9 @@ contract LuckyDraw {
     }
 
     function enter() external payable {
-        require(msg.value == 0.01 ether, "entry = 0.01 ETH");
+        require(msg.value > 0, "send ETH to enter");
         players.push(msg.sender);
-        emit Entered(msg.sender);
+        emit Entered(msg.sender, msg.value);
     }
 
     function pickWinner() external {
