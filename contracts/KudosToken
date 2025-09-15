@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract KudosToken {
+    string public name = "Kudos";
+    string public symbol = "KUDOS";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+
+    mapping(address => uint256) private balanceOf_;
+    mapping(address => mapping(address => uint256)) private allowance_;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(uint256 initialSupply) {
+        totalSupply = initialSupply * (10 ** uint256(decimals));
+        balanceOf_[msg.sender] = totalSupply;
+        emit Transfer(address(0), msg.sender, totalSupply);
+    }
+
+    function balanceOf(address owner) external view returns (uint256) {
+        return balanceOf_[owner];
+    }
+
+    function transfer(address to, uint256 value) external returns (bool) {
+        require(balanceOf_[msg.sender] >= value, "no funds");
+        balanceOf_[msg.sender] -= value;
+        balanceOf_[to] += value;
+        emit Transfer(msg.sender, to, value);
+        return true;
+    }
+
+    function approve(address spender, uint256 value) external returns (bool) {
+        allowance_[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
+        require(balanceOf_[from] >= value, "no funds");
+        require(allowance_[from][msg.sender] >= value, "no allowance");
+        balanceOf_[from] -= value;
+        balanceOf_[to] += value;
+        allowance_[from][msg.sender] -= value;
+        emit Transfer(from, to, value);
+        return true;
+    }
+
+    function allowance(address owner, address spender) external view returns (uint256) {
+        return allowance_[owner][spender];
+    }
+}

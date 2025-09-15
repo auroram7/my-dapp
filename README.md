@@ -32,5 +32,12 @@ https://basescan.org/address/0x01d42be237b04e1f9fbbf79211252c4a029f803d#code
 Poll: 0x826675d749908FAECEAc74eb721BEcD1Bd5A157f
 https://basescan.org/address/0x826675d749908faeceac74eb721becd1bd5a157f#code
 
+FeedbackBoard: 0x1a2154D7E4029b57A7C829576C1EfdF046D80022
+https://basescan.org/address/0x1a2154d7e4029b57a7c829576c1efdf046d80022#code
+
+KudosToken: 0x7A1862bc5BD011b8FF872070a72a1DcBC155d00F
+https://basescan.org/token/0x7a1862bc5bd011b8ff872070a72a1dcbc155d00f#code
+=======
 LuckyDraw: 0x0132ae02cAB4DeA7c17836dCEd36454d80bA0eba
 https://basescan.org/address/0x0132ae02cab4dea7c17836dced36454d80ba0eba#code
+
