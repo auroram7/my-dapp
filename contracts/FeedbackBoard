@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract FeedbackBoard {
+    struct Feedback {
+        address user;
+        string message;
+        uint256 timestamp;
+    }
+
+    Feedback[] private feedbacks;
+
+    event FeedbackSubmitted(address indexed user, string message, uint256 time);
+
+    function submitFeedback(string calldata message) external {
+        require(bytes(message).length > 0, "empty");
+        feedbacks.push(Feedback(msg.sender, message, block.timestamp));
+        emit FeedbackSubmitted(msg.sender, message, block.timestamp);
+    }
+
+    function getFeedback(uint256 index) external view returns (address, string memory, uint256) {
+        require(index < feedbacks.length, "bad index");
+        Feedback storage fb = feedbacks[index];
+        return (fb.user, fb.message, fb.timestamp);
+    }
+
+    function totalFeedback() external view returns (uint256) {
+        return feedbacks.length;
+    }
+}
