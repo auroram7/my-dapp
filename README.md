@@ -31,3 +31,6 @@ https://basescan.org/address/0x01d42be237b04e1f9fbbf79211252c4a029f803d#code
 
 Poll: 0x826675d749908FAECEAc74eb721BEcD1Bd5A157f
 https://basescan.org/address/0x826675d749908faeceac74eb721becd1bd5a157f#code
+
+FeedbackBoard: 0x1a2154D7E4029b57A7C829576C1EfdF046D80022
+https://basescan.org/address/0x1a2154d7e4029b57a7c829576c1efdf046d80022#code
