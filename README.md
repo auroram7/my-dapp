@@ -1,5 +1,5 @@
 # my-dapp
-website address: https://my-new-dapp.netlify.app/
+website address: https://auroram7.github.io/my-dapp/
 
 Guestbook:  0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E
 https://basescan.org/address/0xcec8f80f70fcd4f97af0874ae81b92dfbd9cca2e#code
@@ -37,3 +37,7 @@ https://basescan.org/address/0x1a2154d7e4029b57a7c829576c1efdf046d80022#code
 
 KudosToken: 0x7A1862bc5BD011b8FF872070a72a1DcBC155d00F
 https://basescan.org/token/0x7a1862bc5bd011b8ff872070a72a1dcbc155d00f#code
+=======
+LuckyDraw: 0x0132ae02cAB4DeA7c17836dCEd36454d80bA0eba
+https://basescan.org/address/0x0132ae02cab4dea7c17836dced36454d80ba0eba#code
+
