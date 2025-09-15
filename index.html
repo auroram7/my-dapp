@@ -1,238 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>My DApp Hub</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
-    .card { background: #fff; padding: 16px; margin: 12px 0; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    button { padding: 6px 12px; margin: 4px; border: none; border-radius: 6px; background: #007bff; color: #fff; cursor: pointer; }
-    button:disabled { background: #aaa; }
-    input { padding: 6px; margin: 4px; border-radius: 4px; border: 1px solid #ccc; }
-    h2 { margin-top: 0; }
-  </style>
+  <meta charset="UTF-8" />
+  <title>My DApp Repo</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 </head>
 <body>
-  <h1>📜 My Smart Contracts Dashboard</h1>
-  <button id="connectBtn">Connect Wallet</button>
-  <p id="status">Not connected</p>
+  <h1>My DApp Repo</h1>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <p id="wallet">Not connected</p>
 
-  <!-- Guestbook -->
-  <div class="card">
-    <h2>Guestbook</h2>
-    <input id="guestMsg" placeholder="Write message">
-    <button onclick="signGuestbook()">Sign</button>
-  </div>
+  <hr>
+  <h2>FeedbackBoard</h2>
+  <input id="fbMessage" placeholder="Your feedback"/>
+  <button onclick="submitFeedback()">Submit Feedback</button>
+  <button onclick="loadFeedback()">Load Feedback</button>
+  <pre id="fbOutput"></pre>
 
-  <!-- SimpleVoting -->
-  <div class="card">
-    <h2>SimpleVoting</h2>
-    <input id="voteIndex" type="number" placeholder="Option index">
-    <button onclick="castVote()">Vote</button>
-  </div>
+  <hr>
+  <h2>KudosToken</h2>
+  <input id="kudosTo" placeholder="Recipient address"/>
+  <input id="kudosAmount" placeholder="Amount"/>
+  <button onclick="sendKudos()">Send Kudos</button>
+  <button onclick="checkKudos()">Check Balance</button>
+  <pre id="kudosOutput"></pre>
 
-  <!-- BadgeScore -->
-  <div class="card">
-    <h2>BadgeScore</h2>
-    <input id="entityId" type="number" placeholder="Entity ID">
-    <input id="delta" type="number" placeholder="Increase by">
-    <button onclick="increaseScore()">Increase Score</button>
-  </div>
+  <script>
+    let provider, signer;
+    let feedbackBoard, kudosToken;
 
-  <!-- Counter -->
-  <div class="card">
-    <h2>Counter</h2>
-    <button onclick="incCounter()">Increment</button>
-    <button onclick="getCounter()">Get Value</button>
-    <p id="counterVal"></p>
-  </div>
+    // === contract addresses ===
+    const fbAddr = "PASTE_FEEDBACKBOARD_ADDRESS_HERE";
+    const kudosAddr = "PASTE_KUDOSTOKEN_ADDRESS_HERE";
 
-  <!-- TodoList -->
-  <div class="card">
-    <h2>TodoList</h2>
-    <input id="taskText" placeholder="Task text">
-    <button onclick="addTask()">Add Task</button>
-    <input id="taskIndex" type="number" placeholder="Index">
-    <button onclick="toggleTask()">Toggle Task</button>
-  </div>
+    // === contract ABIs ===
+    const fbABI = [
+      "function submitFeedback(string message)",
+      "function getFeedback(uint256 index) view returns(address,string,uint256)",
+      "function totalFeedback() view returns(uint256)"
+    ];
 
-  <!-- TokenFaucet -->
-  <div class="card">
-    <h2>TokenFaucet</h2>
-    <button onclick="claimTokens()">Claim</button>
-  </div>
+    const kudosABI = [
+      "function transfer(address to, uint256 value) returns(bool)",
+      "function balanceOf(address owner) view returns(uint256)"
+    ];
 
-  <!-- DonationBox -->
-  <div class="card">
-    <h2>DonationBox</h2>
-    <input id="donationAmt" type="number" placeholder="ETH amount">
-    <button onclick="donate()">Donate</button>
-  </div>
+    async function connectWallet() {
+      if (!window.ethereum) return alert("Install MetaMask!");
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      document.getElementById("wallet").innerText = "Connected: " + await signer.getAddress();
+      feedbackBoard = new ethers.Contract(fbAddr, fbABI, signer);
+      kudosToken = new ethers.Contract(kudosAddr, kudosABI, signer);
+    }
 
-  <!-- Greeter -->
-  <div class="card">
-    <h2>Greeter</h2>
-    <button onclick="getGreeting()">Get Greeting</button>
-    <p id="greetingText"></p>
-    <input id="newGreeting" placeholder="New greeting">
-    <button onclick="setGreeting()">Set Greeting</button>
-  </div>
+    // === FeedbackBoard ===
+    async function submitFeedback() {
+      const msg = document.getElementById("fbMessage").value;
+      if (!msg) return alert("Enter feedback");
+      const tx = await feedbackBoard.submitFeedback(msg);
+      await tx.wait();
+      alert("Feedback submitted!");
+    }
 
-  <!-- SimpleBank -->
-  <div class="card">
-    <h2>SimpleBank</h2>
-    <input id="depositAmt" type="number" placeholder="ETH amount">
-    <button onclick="deposit()">Deposit</button>
-    <input id="withdrawAmt" type="number" placeholder="ETH amount">
-    <button onclick="withdraw()">Withdraw</button>
-    <button onclick="checkBalance()">Check Balance</button>
-    <p id="bankBalance"></p>
-  </div>
+    async function loadFeedback() {
+      const total = await feedbackBoard.totalFeedback();
+      let out = "";
+      for (let i = 0; i < total; i++) {
+        const [user, message, time] = await feedbackBoard.getFeedback(i);
+        out += `${i}. ${user}: ${message} (${new Date(time*1000).toLocaleString()})\n`;
+      }
+      document.getElementById("fbOutput").innerText = out;
+    }
 
-  <!-- Poll -->
-  <div class="card">
-    <h2>Poll</h2>
-    <button onclick="voteA()">Vote Option A</button>
-    <button onclick="voteB()">Vote Option B</button>
-    <button onclick="checkVotes()">Check Votes</button>
-    <p id="pollResult"></p>
-  </div>
+    // === KudosToken ===
+    async function sendKudos() {
+      const to = document.getElementById("kudosTo").value;
+      const amt = document.getElementById("kudosAmount").value;
+      if (!to || !amt) return alert("Enter recipient and amount");
+      const decimals = ethers.BigNumber.from("1000000000000000000"); // 1e18
+      const value = ethers.BigNumber.from(amt).mul(decimals);
+      const tx = await kudosToken.transfer(to, value);
+      await tx.wait();
+      alert("Kudos sent!");
+    }
 
-<script>
-let provider, signer;
-
-// contract addresses
-const addr = {
-  guestbook: "0xcec8f80F70fCD4F97AF0874AE81B92dFbd9cCA2E",
-  simpleVoting: "0x593393079914635026344565312224f8c8282e4F",
-  badgeScore: "0x7A38eBEf85D752Cc3CE8AdAC236243CBd3734e75",
-  counter: "0xf13C948A5ce9e4f4E3c8c2Ad2aF840b0EaE98601",
-  todo: "0x079cBF49037898d94eA730e39B998762089Db223",
-  faucet: "0x4e45e75209c61508540AB70886F9d0406C3e1211",
-  donation: "0x7389AD9e829FAA7eA1b90F05b7DcFeb04913925c",
-  greeter: "0xc8a4DaB25C8be768bA7BA9d3dda7ed28C8C21fD9",
-  bank: "0x01D42be237b04e1f9fbBf79211252c4A029F803D",
-  poll: "0x826675d749908FAECEAc74eb721BEcD1Bd5A157f"
-};
-
-// minimal ABI snippets
-const abi = {
-  guestbook: ["function sign(string memory)"],
-  simpleVoting: ["function vote(uint256 option)"],
-  badgeScore: ["function increaseScore(uint256,uint256)"],
-  counter: ["function increment()","function value() view returns(uint256)"],
-  todo: ["function addTask(string calldata)","function toggleTask(uint256)"],
-  faucet: ["function claim()"],
-  donation: ["function donate() payable"],
-  greeter: ["function greet() view returns(string)","function setGreeting(string calldata)"],
-  bank: ["function deposit() payable","function withdraw(uint256)","function balance(address) view returns(uint256)"],
-  poll: ["function vote(bool)","function votesA() view returns(uint256)","function votesB() view returns(uint256)"]
-};
-
-async function connect() {
-  if (!window.ethereum) return alert("No wallet found");
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  document.getElementById("status").innerText = "Connected: " + await signer.getAddress();
-}
-document.getElementById("connectBtn").onclick = connect;
-
-// Guestbook
-async function signGuestbook() {
-  const c = new ethers.Contract(addr.guestbook, abi.guestbook, signer);
-  await c.sign(document.getElementById("guestMsg").value);
-}
-
-// SimpleVoting
-async function castVote() {
-  const c = new ethers.Contract(addr.simpleVoting, abi.simpleVoting, signer);
-  await c.vote(document.getElementById("voteIndex").value);
-}
-
-// BadgeScore
-async function increaseScore() {
-  const c = new ethers.Contract(addr.badgeScore, abi.badgeScore, signer);
-  await c.increaseScore(document.getElementById("entityId").value, document.getElementById("delta").value);
-}
-
-// Counter
-async function incCounter() {
-  const c = new ethers.Contract(addr.counter, abi.counter, signer);
-  await c.increment();
-}
-async function getCounter() {
-  const c = new ethers.Contract(addr.counter, abi.counter, provider);
-  document.getElementById("counterVal").innerText = await c.value();
-}
-
-// TodoList
-async function addTask() {
-  const c = new ethers.Contract(addr.todo, abi.todo, signer);
-  await c.addTask(document.getElementById("taskText").value);
-}
-async function toggleTask() {
-  const c = new ethers.Contract(addr.todo, abi.todo, signer);
-  await c.toggleTask(document.getElementById("taskIndex").value);
-}
-
-// Faucet
-async function claimTokens() {
-  const c = new ethers.Contract(addr.faucet, abi.faucet, signer);
-  await c.claim();
-}
-
-// Donation
-async function donate() {
-  const amt = document.getElementById("donationAmt").value;
-  const c = new ethers.Contract(addr.donation, abi.donation, signer);
-  await c.donate({ value: ethers.utils.parseEther(amt) });
-}
-
-// Greeter
-async function getGreeting() {
-  const c = new ethers.Contract(addr.greeter, abi.greeter, provider);
-  document.getElementById("greetingText").innerText = await c.greet();
-}
-async function setGreeting() {
-  const c = new ethers.Contract(addr.greeter, abi.greeter, signer);
-  await c.setGreeting(document.getElementById("newGreeting").value);
-}
-
-// Bank
-async function deposit() {
-  const amt = document.getElementById("depositAmt").value;
-  const c = new ethers.Contract(addr.bank, abi.bank, signer);
-  await c.deposit({ value: ethers.utils.parseEther(amt) });
-}
-async function withdraw() {
-  const amt = document.getElementById("withdrawAmt").value;
-  const c = new ethers.Contract(addr.bank, abi.bank, signer);
-  await c.withdraw(ethers.utils.parseEther(amt));
-}
-async function checkBalance() {
-  const c = new ethers.Contract(addr.bank, abi.bank, provider);
-  const addrUser = await signer.getAddress();
-  const bal = await c.balance(addrUser);
-  document.getElementById("bankBalance").innerText = ethers.utils.formatEther(bal) + " ETH";
-}
-
-// Poll
-async function voteA() {
-  const c = new ethers.Contract(addr.poll, abi.poll, signer);
-  await c.vote(true);
-}
-async function voteB() {
-  const c = new ethers.Contract(addr.poll, abi.poll, signer);
-  await c.vote(false);
-}
-async function checkVotes() {
-  const c = new ethers.Contract(addr.poll, abi.poll, provider);
-  const a = await c.votesA();
-  const b = await c.votesB();
-  document.getElementById("pollResult").innerText = `Option A: ${a} votes | Option B: ${b} votes`;
-}
-</script>
+    async function checkKudos() {
+      const addr = await signer.getAddress();
+      const bal = await kudosToken.balanceOf(addr);
+      const human = ethers.utils.formatUnits(bal, 18);
+      document.getElementById("kudosOutput").innerText = "Balance: " + human + " KUDOS";
+    }
+  </script>
 </body>
 </html>
